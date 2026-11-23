@@ -19,6 +19,11 @@ export default defineConfig({
     headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Optional: use a preinstalled Chromium instead of Playwright's download
+    // (set by run-e2e.sh in Claude cloud sessions).
+    ...(process.env.E2E_CHROMIUM_PATH && {
+      launchOptions: { executablePath: process.env.E2E_CHROMIUM_PATH },
+    }),
   },
 
   globalSetup: './global-setup.js',

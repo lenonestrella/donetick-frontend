@@ -8,7 +8,25 @@ set -m # each backgrounded job gets its own process group, so we can kill it as 
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-BACKEND_DIR="$HOME/workspace/donetick-core"
+# Backend checkout: $BACKEND_DIR if set, else a sibling ../donetick checkout
+# (the layout used by Claude cloud sessions), else the original local path.
+if [[ -z "${BACKEND_DIR:-}" ]]; then
+  if [[ -f "$FRONTEND_DIR/../donetick/go.mod" ]]; then
+    BACKEND_DIR="$(cd "$FRONTEND_DIR/../donetick" && pwd)"
+  else
+    BACKEND_DIR="$HOME/workspace/donetick-core"
+  fi
+fi
+if [[ ! -f "$BACKEND_DIR/go.mod" ]]; then
+  echo "Backend not found at $BACKEND_DIR — set BACKEND_DIR to your donetick backend checkout." >&2
+  exit 1
+fi
+echo "Using backend at $BACKEND_DIR"
+
+# Claude cloud sessions ship a preinstalled Chromium; use it unless told otherwise.
+if [[ -z "${E2E_CHROMIUM_PATH:-}" && -x /opt/pw-browsers/chromium ]]; then
+  export E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium
+fi
 
 BACKEND_PORT=2022
 FRONTEND_PORT=5180
