@@ -35,7 +35,8 @@ test.describe('ChoreEdit', () => {
     await page.locator('input').first().fill(choreName)
 
     // ── Enable recurrence and switch to a custom "days of the week" schedule
-    await page.getByLabel('Repeat this task').click()
+    await page.getByRole('combobox', { name: 'Schedule type' }).click()
+    await page.getByRole('option', { name: 'Repeating task' }).click()
     await page.getByLabel('Custom').click()
     await page.getByLabel('Days of the Week').click()
 
@@ -94,7 +95,10 @@ test.describe('ChoreEdit', () => {
     await expect(page.getByLabel('Anyone')).not.toBeChecked()
 
     // Give it a due date so it's a simple one-off chore
-    await page.getByLabel('Give this task a due date').click()
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10)
+    await page.getByLabel('Due date').fill(tomorrow)
 
     await page.getByRole('button', { name: 'Create' }).click()
     await page.waitForURL('**/chores', { timeout: 15_000 })
@@ -121,7 +125,7 @@ test.describe('ChoreEdit', () => {
     await page.locator('input[type="date"]').fill(updatedDueDate)
     await page.getByLabel('Anyone').click()
 
-    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
     await page.waitForURL('**/chores', { timeout: 15_000 })
 
     // ── Reload the edit page and confirm the new values persisted in the UI

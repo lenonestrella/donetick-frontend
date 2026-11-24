@@ -5,6 +5,9 @@ import vm from 'node:vm'
 
 import { transformSync } from '@swc/core'
 
+import { getChorePermissions } from '../src/utils/ChoreAccess.js'
+import { visibleLabels } from '../src/utils/Labels.js'
+
 // Exercise the row's real render and handlers with lightweight hook/component
 // stubs, without needing the application providers or a browser.
 const source = readFileSync(
@@ -62,8 +65,25 @@ function render(overrides = {}, options = {}) {
     },
     '../../../utils/Colors': { getPriorityColor: () => '#d32f2f' },
     '../../../utils/ExternalLinks': {
-      splitTextAtFirstHttpUrl: name => ({ before: name, after: '', url: null }),
-      getFirstHttpUrl: () => null,
+      splitTextAtFirstLink: name => ({ before: name, after: '', link: null }),
+      getFirstLink: () => null,
+      openExternalLink: () => {},
+    },
+    '../../../utils/Labels': { visibleLabels },
+    '../../../components/common/ExternalLinkChip': {
+      LinkTypeIcon: 'LinkTypeIcon',
+    },
+    '../../../hooks/useChorePermissions': {
+      useChorePermissions: chore =>
+        getChorePermissions(
+          chore,
+          options.impersonatedUser?.userId || 5,
+          options.members || [],
+        ),
+    },
+    '../../components/ChoreStatusChip': {
+      default: 'ChoreStatusChip',
+      __esModule: true,
     },
     '../../components/ChoreActionMenu': {
       ChoreActionMenuTrigger: 'MenuTrigger',
@@ -141,27 +161,61 @@ test('multi-select uses the same slot without completing the task', () => {
 })
 
 test('start, pause and approval retain their existing task actions', () => {
+  const admin = [{ userId: 5, role: 'admin' }]
   for (const [status, action] of [
     [1, 'pause'],
     [2, 'start'],
     [3, 'approve'],
   ]) {
-    const row = render({ chore: { id: 9, name: 'Task', status, createdBy: 5 } })
+    const row = render(
+      { chore: { id: 9, name: 'Task', status, assignedTo: 5 } },
+      { members: admin },
+    )
     const button = control(row)
     assert.equal(button.props.disabled, false)
     button.props.onClick()
     assert.deepEqual(row.actions, [[action, 9]])
   }
-  const pending = { chore: { id: 9, name: 'Task', status: 3, createdBy: 8 } }
-  assert.equal(control(render(pending)).props.disabled, true)
+})
+
+test('approval mirrors the backend: only admins and managers may approve', () => {
+  const pending = { chore: { id: 9, name: 'Task', status: 3, createdBy: 5 } }
+  // Without approval rights the row shows a passive waiting indicator.
+  const canApprove = row => {
+    const button = control(row)
+    if (!button) {
+      assert.ok(find(row.tree, node => node.type === 'HourglassEmpty'))
+      return false
+    }
+    return button.props.disabled === false
+  }
+  // Owning the task does not grant approval.
+  assert.equal(canApprove(render(pending)), false)
   assert.equal(
-    control(render(pending, { members: [{ userId: 5, role: 'admin' }] })).props
-      .disabled,
-    false,
+    canApprove(render(pending, { members: [{ userId: 5, role: 'admin' }] })),
+    true,
   )
   assert.equal(
-    control(render(pending, { impersonatedUser: { userId: 8 } })).props
-      .disabled,
+    canApprove(render(pending, { members: [{ userId: 5, role: 'member' }] })),
+    false,
+  )
+  // Impersonation evaluates the impersonated user's role, not the viewer's.
+  assert.equal(
+    canApprove(
+      render(pending, {
+        impersonatedUser: { userId: 8 },
+        members: [{ userId: 8, role: 'manager' }],
+      }),
+    ),
+    true,
+  )
+  assert.equal(
+    canApprove(
+      render(pending, {
+        impersonatedUser: { userId: 8 },
+        members: [{ userId: 5, role: 'admin' }],
+      }),
+    ),
     false,
   )
 })

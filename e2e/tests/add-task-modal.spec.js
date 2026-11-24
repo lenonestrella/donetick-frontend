@@ -36,6 +36,11 @@ test.describe('AddTaskModal (quick-add)', () => {
     await input.fill(taskName)
     await input.press('Enter')
 
+    // ── Plain Enter creates and leaves a blank form open for the next task ──
+    await expect(dialog).toBeVisible()
+    await expect(input).toHaveValue('')
+    await input.press('Escape')
+
     // ── Modal closes and the task shows up in the list ──────────────────────
     await expect(dialog).toBeHidden()
     await expect(page.getByText(taskName)).toBeVisible({ timeout: 10_000 })
@@ -73,7 +78,8 @@ test.describe('AddTaskModal (quick-add)', () => {
       dialog.getByRole('button', { name: 'Due', exact: true }),
     ).toHaveCount(0)
 
-    await input.press('Enter')
+    // Cmd/Ctrl+Enter creates the task and closes the modal.
+    await input.press('ControlOrMeta+Enter')
 
     await expect(dialog).toBeHidden()
     await expect(page.getByText(taskName)).toBeVisible({ timeout: 10_000 })

@@ -61,7 +61,7 @@ test.describe('Projects & Filters – Create and navigate', () => {
 
     // ── Reload so the project list reflects the new task count ───────────
     await page.reload()
-    await expect(projectRow.getByText('1 tasks')).toBeVisible({
+    await expect(projectRow.getByText('1 task', { exact: true })).toBeVisible({
       timeout: 10_000,
     })
 
@@ -107,7 +107,9 @@ test.describe('Projects & Filters – Create and navigate', () => {
     await filterDialog
       .getByPlaceholder('e.g. Overdue tasks for Alice')
       .fill(filterName)
-    // Condition: Projects is <the seeded project> — one condition is enough
+    // Condition: Projects is <the seeded project> — one condition is enough.
+    // Each condition lives in a collapsed section, so expand Projects first.
+    await filterDialog.getByRole('button', { name: /^Projects\b/ }).click()
     await filterDialog
       .getByRole('button', { name: filterProjectName, exact: true })
       .click()
@@ -150,7 +152,7 @@ test.describe('Projects & Filters – Create and navigate', () => {
 
     // ── Reload so the filter list reflects the new task count ────────────
     await page.reload()
-    await expect(filterRow.getByText('1 tasks')).toBeVisible({
+    await expect(filterRow.getByText('1 task', { exact: true })).toBeVisible({
       timeout: 10_000,
     })
 

@@ -20,6 +20,10 @@ export const TEST_USER = {
   displayName: 'E2E User',
 }
 
+// Must match `timezoneId` in playwright.config.js. A saved timezone that
+// differs from the browser's makes the app open a blocking timezone prompt.
+export const TEST_TIMEZONE = 'UTC'
+
 /**
  * Global setup: create the shared E2E test user (idempotent) and persist
  * the JWT token as a Playwright storage state so authenticated tests can
@@ -32,7 +36,7 @@ export default async function globalSetup() {
   const signupRes = await fetch(`${API_URL}/api/v1/auth/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(TEST_USER),
+    body: JSON.stringify({ ...TEST_USER, timezone: TEST_TIMEZONE }),
   })
   if (!signupRes.ok) {
     const body = await signupRes.text()
@@ -58,6 +62,26 @@ export default async function globalSetup() {
 
   const { expire, token } = await loginRes.json()
 
+  // Re-runs reuse an existing user, so also save the timezone explicitly.
+  const profileRes = await fetch(`${API_URL}/api/v1/users`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ timezone: TEST_TIMEZONE }),
+  })
+  if (!profileRes.ok) {
+    const body = await profileRes.text()
+    throw new Error(`Timezone update failed (${profileRes.status}): ${body}`)
+  }
+
+  // The shared user persists between runs, so clear out what earlier runs
+  // created. Otherwise projects pile up until the free-plan project limit
+  // opens an upgrade dialog in place of the create form.
+  await deleteLeftovers(token, 'projects')
+  await deleteLeftovers(token, 'filters')
+
   // Write a Playwright storage-state file containing the token in localStorage
   const stateDir = path.join(__dirname, '.auth')
   await mkdir(stateDir, { recursive: true })
@@ -79,6 +103,25 @@ export default async function globalSetup() {
   )
 
   console.log('[global-setup] Test user ready, storage state saved.')
+}
+
+async function deleteLeftovers(token, resource) {
+  const headers = { Authorization: `Bearer ${token}` }
+  const res = await fetch(`${API_URL}/api/v1/${resource}`, { headers })
+  if (!res.ok) {
+    throw new Error(`Listing ${resource} failed (${res.status})`)
+  }
+  const body = await res.json()
+  const items = Array.isArray(body) ? body : body.res || []
+  for (const item of items.filter(item => item.name?.startsWith('E2E '))) {
+    const del = await fetch(`${API_URL}/api/v1/${resource}/${item.id}`, {
+      method: 'DELETE',
+      headers,
+    })
+    if (!del.ok) {
+      throw new Error(`Deleting ${resource}/${item.id} failed (${del.status})`)
+    }
+  }
 }
 
 async function waitForServer(url, retries = 20, delayMs = 1000) {

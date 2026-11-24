@@ -44,7 +44,10 @@ test('every destination has one home, a translated label, and a working route', 
       )
     assert.ok(locale.overview.sections[section.id]?.title, section.id)
     assert.ok(locale.overview.sections[section.id]?.description, section.id)
-    assert.ok(router.includes(`path: '${section.id}'`), section.id)
+    // Shortcuts to top-level pages link out via `to`; the rest are settings
+    // child routes keyed by their id.
+    const route = section.to ? section.to.split('?')[0] : section.id
+    assert.ok(router.includes(`path: '${route}'`), section.id)
   }
   for (const group of groups) assert.ok(locale.overview.groups[group])
 })

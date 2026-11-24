@@ -17,6 +17,8 @@ export default defineConfig({
   use: {
     baseURL: FRONTEND_URL,
     headless: true,
+    // Keep in sync with TEST_TIMEZONE in global-setup.js.
+    timezoneId: 'UTC',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     // Optional: use a preinstalled Chromium instead of Playwright's download

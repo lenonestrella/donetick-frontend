@@ -58,17 +58,27 @@ test('standard snackbars use a single theme accent while preserving status icons
     new URL('../src/service/NotificationProvider.jsx', import.meta.url),
     'utf8',
   )
+  // One resolved color drives every tinted part of the toast: the icon
+  // bubble, the undo action and the auto-hide progress bar.
   assert.match(
     provider,
-    /const notificationColor = isCustomTheme \? 'primary' : config.color/,
+    /const color = isCustomTheme \? 'primary' : config.color/,
   )
-  assert.match(provider, /color=\{isCustomTheme \? 'primary' : 'neutral'\}/)
-  assert.equal((provider.match(/color=\{notificationColor\}/g) || []).length, 5)
+  assert.match(provider, /<Toast[\s\S]*?color=\{color\}/)
+  for (const token of [
+    /bgcolor: `\$\{color\}.softBg`/,
+    /color: `\$\{color\}.plainColor`/,
+    /variant='soft'\s+color=\{color\}\s+onClick=\{onAction\}/,
+    /bgcolor: `\$\{color\}.solidBg`/,
+  ]) {
+    assert.match(provider, token)
+  }
+  // Severity still reads through each type's own icon and title.
   assert.match(
     provider,
-    /React.cloneElement\(config.icon, \{ color: 'inherit' \}\)/,
+    /notification.icon \|\| \(Icon \? <Icon \/> : undefined\)/,
   )
-  assert.match(provider, /notification.title \|\| t\(config.defaultTitle\)/)
+  assert.match(provider, /title=\{title \|\| t\(config.defaultTitle\)\}/)
   assert.doesNotMatch(provider, /color=\{config.color\}/)
 })
 
