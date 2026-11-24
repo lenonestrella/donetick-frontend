@@ -29,12 +29,43 @@ export class SessionStorageError extends Error {
   }
 }
 
+// How long sign-in/sign-out waits for the offline cache to clear. Mobile
+// Safari can stop answering IndexedDB requests (commonly after the tab was
+// backgrounded) until the site's data is cleared; without a bound, login
+// would spin forever after the server already accepted the credentials.
+export const OFFLINE_CLEAR_TIMEOUT_MS = 3000
+
+const TIMED_OUT = Symbol('timed out')
+
+const clearOfflineCache = async () => {
+  let timeout
+  const clearing = offlineDB.clearAll()
+  const result = await Promise.race([
+    clearing,
+    new Promise(resolve => {
+      timeout = setTimeout(() => resolve(TIMED_OUT), OFFLINE_CLEAR_TIMEOUT_MS)
+    }),
+  ]).finally(() => clearTimeout(timeout))
+
+  if (result === TIMED_OUT) {
+    console.warn('Offline cache did not clear in time; continuing without it')
+    // Drop the wedged connection so the next use opens a fresh one, and keep
+    // trying to clear in the background so the previous session's cached
+    // data does not survive once the database answers again.
+    offlineDB.reset()
+    clearing.catch(() => {})
+    offlineDB.clearAll().catch(err => {
+      console.error('Deferred offline cache clear failed', err)
+    })
+  }
+}
+
 export const clearSession = async () => {
   // Invalidate the session first so pending hydration cannot seed old data.
   await clearAllTokens()
   await queryClient.cancelQueries()
   queryClient.clear()
-  await offlineDB.clearAll()
+  await clearOfflineCache()
 }
 
 // Explicit login (password, OAuth, or MFA) establishes a new session.
