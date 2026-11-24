@@ -264,6 +264,7 @@ function setupMoves({ enabled = true, online = false, reject } = {}) {
     react: {},
     '../analytics': { track: () => {} },
     '../hooks/NetworkManager': { networkManager },
+    '../hooks/usePendingCommands': { usePendingCommandsMap: () => ({}) },
     '../utils/BoardOrdering': ordering,
     '../utils/CommandQueue': queueModule,
     '../utils/Fetcher': fetchers,

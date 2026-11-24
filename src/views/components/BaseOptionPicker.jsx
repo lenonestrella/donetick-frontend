@@ -127,7 +127,9 @@ const BaseOptionPicker = ({
           size={'sm'}
           variant={isEmpty ? 'outlined' : 'soft'}
           color='neutral'
-          aria-label={emptyLabel}
+          // Name the trigger by what it shows (e.g. "Priority", then "P1"),
+          // not by a fixed placeholder that hides the current selection.
+          aria-label={triggerText || emptyLabel}
           aria-expanded={isOpen}
           onClick={() => setIsOpen(prev => !prev)}
           sx={{

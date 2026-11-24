@@ -20,8 +20,9 @@ test.describe('Chores – Create', () => {
     await page.locator('input').first().fill(choreName)
 
     // ── Enable recurrence ─────────────────────────────────────────────────
-    // Check the "Repeat this task" checkbox to reveal frequency options
-    await page.getByLabel('Repeat this task').click()
+    // Switch the schedule type to reveal frequency options
+    await page.getByRole('combobox', { name: 'Schedule type' }).click()
+    await page.getByRole('option', { name: 'Repeating task' }).click()
 
     // Select "Daily" from the frequency chips
     await page.getByLabel('Daily').click()

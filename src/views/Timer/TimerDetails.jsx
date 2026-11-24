@@ -41,6 +41,7 @@ import SwipeListItem, {
 } from '../../components/common/SwipeListItem'
 import { viewportMedia } from '../../constants/responsive'
 import { useLocalization } from '../../contexts/LocalizationContext'
+import { useThemeSkin } from '../../contexts/ThemeSkinContext'
 import { useChorePermissions } from '../../hooks/useChorePermissions'
 import { useResponsiveModal } from '../../hooks/useResponsiveModal'
 import { useChore } from '../../queries/ChoreQueries'
@@ -163,6 +164,9 @@ LegendKey.propTypes = {
 
 const TimerDetails = () => {
   const { t } = useTranslation(['timer', 'chores', 'common'])
+  const { skin } = useThemeSkin()
+  // Matches task completion elsewhere: green on the default skin only.
+  const completionColor = skin === 'default' ? 'success' : 'primary'
   const { choreId } = useParams()
   const { data: choreData } = useChore(choreId)
   const permissions = useChorePermissions(choreData?.res)
@@ -625,7 +629,11 @@ const TimerDetails = () => {
                     size='sm'
                     variant='soft'
                     color={
-                      running ? 'primary' : finished ? 'success' : 'warning'
+                      running
+                        ? 'primary'
+                        : finished
+                          ? completionColor
+                          : 'warning'
                     }
                     startDecorator={running ? <LiveDot /> : undefined}
                   >

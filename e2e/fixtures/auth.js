@@ -4,8 +4,10 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Signup and login both land on the Home screen at `/`, not on the task list.
-const atHome = url => new URL(url).pathname === '/'
+// Signup and login both land on Home, not on the task list. `/` renders the
+// user's default view, which redirects to `/home` once it resolves.
+export const HOME_URL = /\/(home)?$/
+const atHome = url => ['/', '/home'].includes(new URL(url).pathname)
 
 /**
  * Fill and submit the signup form through the UI.

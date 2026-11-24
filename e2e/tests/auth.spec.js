@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { loginViaUI, signUpViaUI } from '../fixtures/auth.js'
+import { HOME_URL, loginViaUI, signUpViaUI } from '../fixtures/auth.js'
 
 // Username must match /^[a-z.-]+$/ — no digits allowed.
 // Generate a random lowercase-only suffix for uniqueness across runs.
@@ -24,7 +24,7 @@ test.describe('Auth – Sign Up', () => {
 
     await signUpViaUI(page, user)
 
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(HOME_URL)
   })
 
   test('accepts a display name with non-ASCII letters', async ({ page }) => {
@@ -64,7 +64,7 @@ test.describe('Auth – Login', () => {
       password: 'E2ePassword123!',
     })
 
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(HOME_URL)
   })
 
   test('shows an error for wrong password', async ({ page }) => {
