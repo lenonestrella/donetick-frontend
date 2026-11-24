@@ -584,14 +584,41 @@ class IndexedDBBackend {
     })
   }
 
+  close() {
+    if (this.db) {
+      try {
+        // Graceful: the connection closes once in-flight transactions finish.
+        this.db.close()
+      } catch {
+        // already closed
+      }
+      this.db = null
+    }
+    this.initialized = false
+    this._openPromise = null
+  }
+
   async init() {
     if (this.initialized) return
-    this.db = await this._open()
-    // Re-open if browser closes the connection (e.g. after device sleep)
-    this.db.onclose = () => {
-      this.initialized = false
-    }
-    this.initialized = true
+    // Concurrent callers share one open instead of each opening (and
+    // leaking) their own connection.
+    if (this._openPromise) return this._openPromise
+
+    this._openPromise = (async () => {
+      // Re-opening after a visibility change used to leave the previous
+      // connection open; close it so connections do not pile up.
+      this.close()
+      const db = await this._open()
+      // Re-open if browser closes the connection (e.g. after device sleep)
+      db.onclose = () => {
+        this.initialized = false
+      }
+      this.db = db
+      this.initialized = true
+    })().finally(() => {
+      this._openPromise = null
+    })
+    return this._openPromise
   }
 
   async _tx(storeName, mode = 'readonly') {
@@ -988,6 +1015,15 @@ class OfflineDB {
     if (!this.initialized) {
       await this.init()
     }
+  }
+
+  // Forget the current connection (and any open that is still pending) so the
+  // next operation starts from a fresh one. Used when the database stops
+  // responding.
+  reset() {
+    this.backend?.close?.()
+    this.initialized = false
+    this._initPromise = null
   }
 
   // Chore cache
